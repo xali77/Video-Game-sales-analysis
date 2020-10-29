@@ -1,0 +1,380 @@
+---
+title: "Review 3 | Data Analytics Project"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+### Reg. No: 18BCE1327
+
+### Name: Mohammed Ali
+
+### The Final Review 
+
+#### The global video game market size was valued at USD 151.06 billion in 2019 and is expected to grow at a Compound Annual Growth Rate (CAGR) of 12.9% from 2020 to 2027. Technological proliferation and innovation in both hardware and software are expected to be the key factors driving the growth. The growing penetration of internet services coupled with the easy availability and access of games on the internet across the globe is also expected to keep the market growth prospects upbeat in the forthcoming years. Game developers are also constantly improvising and pushing the technological limits regarding the real-time rendering of graphics in the video game industry, which is further expected to propel the growth.
+
+### Aim
+
+#### As we said before Video games are a multibillion dollar industry which aimes to grow in this analysis I want to show how the sales are affected by different factors such as Critic and User reviews and whether Good sales in one region are correleated to other regions.
+
+## the dataset
+```{r}
+library("dplyr")
+library("ggplot2")
+library("GGally")
+library("tidyverse")
+library("plotrix")
+library("gridExtra")
+library("grid")
+library("lattice")
+library("leaps")
+library("data.table")
+d2=read.csv('C:/Users/pc/Desktop/sem5/DATA PROJECT/data.csv')
+d3 = d2%>%
+  mutate(Rating=replace(Rating,Rating=="","E")) %>%
+  mutate(Rating=replace(Rating,Rating=="K-A","E")) %>%
+  mutate(Rating=replace(Rating,Rating=="RP","E10+"))  %>%
+  mutate(Rating=replace(Rating,Rating=="AO","M"))
+d3=na.omit(d3)
+d4=read.csv('C:/Users/pc/Desktop/sem5/DATA PROJECT/ek.csv')
+```
+
+## Dataset Exploration
+
+```{r}
+
+colnames(d3)
+
+str(d3)
+
+summary(d3)
+```
+
+
+
+## Some more Exploratory Analysis
+
+
+## Finding The Top publishers with Global sales
+
+```{r}
+
+TopPublishers=aggregate(d3$Global_Sales,list(d3$Publisher),sum)
+TopPublishers= TopPublishers[with(TopPublishers, order(-x)), ]
+head(TopPublishers, 10)
+```
+
+
+#### The top 9/10 companies here are either from America or Japan, the only exception being Ubisoft which is from france. this shows how dominant Japan and USA are in the gaming industry.
+
+## Top 10 developers
+
+```{r}
+
+Topdev=aggregate(d3$Global_Sales,list(d3$Developer),sum)
+Topdev= Topdev[with(Topdev, order(-x)), ]
+head(Topdev, 10)
+```
+
+#### As you can see here the companies are based in either france, Canada or USA. but japanese companies are not there because even though they publish a lot of games they do not independantly develop lots of games.
+
+## Top Publishers as per Number of games released
+
+```{r}
+pu=table(d3$Publisher)
+pu=sort(pu,decreasing=TRUE)
+pu=as.data.frame(pu)
+colnames(pu)[1]<-"Publisher"
+pub20=pu[1:20,]
+vgpub=ggplot(pub20, aes(x=reorder(Publisher,Freq),y=Freq,fill=Freq)) + geom_bar(stat="identity") + coord_flip() + labs(x="Publishers", y="Number of Games Released", fill="Publisher",title="Top 20 Publishers by Number of Games Released") + theme(axis.title.x=element_text(size=14,face="plain"),axis.title.y=element_blank(),title = element_text(size=14,face="bold"),legend.position="none") + scale_fill_gradient()
+vgpub
+
+
+```
+
+#### The American Company EA is winning by miles as its a very large company with many subsidaries
+
+
+## Top Publishers as per Revenue
+
+```{r}
+
+vgrev=aggregate(Global_Sales~Publisher,d3,sum)
+vgrev=vgrev[order(-vgrev$Global_Sales),]
+rownames(vgrev)=1:nrow(vgrev)
+vgrev20=vgrev[1:20,]
+rev20=ggplot(vgrev20, aes(x=reorder(Publisher,Global_Sales),y=Global_Sales,fill=Global_Sales)) + geom_bar(stat="identity") + coord_flip() + labs(x="Publishers", y="Revenue",title="Top 20 Publishers by Revenue") + theme(legend.position="none",axis.title.y=element_blank(),axis.title.x=element_text(size=14,face="plain"),title = element_text(size=14,face="bold")) + scale_fill_gradient()
+rev20
+```
+
+
+#### Here as well EA is leading but nintendo is not far behind as it not only makes games but also makes gaming consoles and has consolidated the japanese market
+
+
+
+
+
+## Top Developers as per Number of games released
+
+```{r}
+re=table(d3$Developer)
+re=sort(re,decreasing=TRUE)
+re=as.data.frame(re)
+colnames(re)[1]<-"Developer"
+re2=re[1:20,]
+ww1=ggplot(re2, aes(x=reorder(Developer,Freq),y=Freq,fill=Freq)) + geom_bar(stat="identity") + coord_flip() + labs(x="Publishers", y="Number of Games Released", fill="Developer",title="Top 20 Publishers by Number of Games Released") + theme(axis.title.x=element_text(size=14,face="plain"),axis.title.y=element_blank(),title = element_text(size=14,face="bold"),legend.position="none") + scale_fill_gradient()
+ww1
+
+```
+
+#### EA is the leader here with both its subsidaries being neck to neck, hence holding the clear majority its followed by the french company Ubisoft and Japanese company Capcom
+
+
+## Top Developers as per Revenue
+
+```{r}
+lol=aggregate(Global_Sales~Developer,d3,sum)
+lol=lol[order(-lol$Global_Sales),]
+rownames(lol)=1:nrow(lol)
+vgrev20=lol[1:20,]
+ww2=ggplot(vgrev20, aes(x=reorder(Developer,Global_Sales),y=Global_Sales,fill=Global_Sales)) + geom_bar(stat="identity") + coord_flip() + labs(x="Publishers", y="Revenue",title="Top 20 Publishers by Revenue") + theme(legend.position="none",axis.title.y=element_blank(),axis.title.x=element_text(size=14,face="plain"),title = element_text(size=14,face="bold")) + scale_fill_gradient()
+ww2
+```
+
+
+#### The most Profitable Publisher is the Japanese company Nintendo
+
+
+## Choosing the variable of interest - Rating
+
+#### Each game upon release needs to be rated defining the restrictions on the age of the player, this is necessary as many games contain graphic content which is not suitable for younger children.
+
+
+Rating name :        | Description:
+-------------------- | ---------
+`E`                  | Can be played by everyone
+`M`                  | Mature Audience only, meaning 17 or older
+`T`                  | For Teens and above
+`E10+`               | Everyone older than 10 years
+
+
+## Distribution of Ratings
+
+```{r}
+
+ggplot(data=d3,aes(x=Rating))+geom_bar(fill="lightblue",col="red")
+
+```
+
+#### Majority lies when Mature and teen categories are combined, but games meant for everyone still have a significant majority
+
+## Global sales with respect to critic score
+
+```{r}
+
+ggplot(data=d3,aes(y=Global_Sales,x=Critic_Score,fill=Rating)) +geom_bar(stat="identity")
+```
+
+#### As we can see global sales of video games is actually somewhat correleated to the the critic score as the games with Critic scored less than 50 have significantly less sales.
+
+
+## Global sales with respect to User score
+
+```{r}
+
+ggplot(data=d3,aes(y=Global_Sales,x=User_Score,fill=Rating)) +geom_bar(stat = "identity")
+```
+
+#### here as well the user score did affect the global sales. and similarly games meant for ages more than 10 have a majority
+
+
+## Are Sales Affected by critic and User rating?
+
+```{r}
+d5= filter(d4,is.na(User_Score) == FALSE,is.na(Critic_Score) == FALSE,is.na(Global_Sales) == FALSE)
+genre_score=d5 %>% group_by(Genre) %>% summarize(Critic_Score = mean(Critic_Score,na.rm=TRUE),User_Score = mean(User_Score,na.rm=TRUE))
+
+genre_score= pivot_longer(genre_score,cols=ends_with("Score"),names_to="Type",values_to="Score")                
+game_sales=d5 %>% group_by(Genre) %>% summarize(Global_Sales = mean(Global_Sales,na.rm=TRUE))
+
+sps =genre_score %>% merge(game_sales,by="Genre")
+ssc = filter(drop_na(sps),Type == 'Critic_Score')
+ssu= filter(drop_na(sps),Type == 'User_Score')
+
+
+critic = ggplot(ssc,aes(fill=Genre,x=Score,y=Global_Sales,color=Genre)) + geom_point(size=3) + xlab("Critic Score") +   ylab("Game Sales") +   ggtitle("Critic Ratings vs Game Sales") +  guides(fill=guide_legend(ncol=3)) +   geom_jitter() 
+
+user =ggplot(ssu,aes(fill=Genre,x=Score,y=Global_Sales,color=Genre)) +   geom_point(size=3) +   xlab("User Score") +   ylab("Game Sales") +   ggtitle("User Ratings vs Game Sales") + guides(fill=guide_legend(ncol=3)) + geom_jitter() 
+grid.arrange(critic,user)
+
+```
+
+#### Hence We can see that Users give higher ratings Action and shooter games have the highest ratings
+#### Simulation Games Have the Highest scores but lack in sales
+#### Action, Shooter have both sales and User scores
+#### Hence we can conclude that sales are dependant on The scores given by users and critics
+
+
+## Distribution of genre as per platform
+
+```{r}
+ggplot(data=d3,aes(Platform,fill=Genre))+geom_bar()
+```
+
+
+#### Its clear that the Japanese PS2 is the leading console followed by The American XBoX, and also can be seen that the majority of games released are in the Action category
+
+
+## Distribution of ratings as per the category
+
+```{r}
+ggplot(data=d3,aes(y=Global_Sales,x=Genre,fill=Rating))+geom_bar(stat = "identity")+theme(axis.text.x = element_text(angle = 20,size = 9))
+```
+
+#### We can clearly See that that in Shooter, Action And Fighting games Had majority in M and T rating where as Sports, Racing and Platform games Had majority in E and E10+ Rating
+
+## Distribution of Regional Sales as per Global Sales
+
+```{r}
+EU_Sales=sum(d3$EU_Sales)
+NA_Sales=sum(d3$NA_Sales)
+JP_Sales=sum(d3$JP_Sales)
+Other_Sales=sum(d3$Other_Sales)
+Global_Sales=sum(d3$Global_Sales)
+kk=data.frame(Global_Sales=c(JP_Sales,NA_Sales,EU_Sales,Other_Sales)) 
+pie3D(kk$Global_Sales,explode=0.2,labels=c("JP","NA","EU","Other"))
+
+```
+
+#### Hence North america holds the major market share with over 50% due to being the location of the major companies
+
+
+## Correlation graph of all variables
+
+```{r}
+ggcorr(d3)
+```
+
+#### Hence as We can see Global sales are highly correleated to North America sales as they are the leaders in the industry and other sales are also somewhat correleated
+#### Also User Score and Critic Score are not correleated telling that even though Users prefer games rated higher by the critics doesnt actually mean they end up liking it.
+
+## Correleation between global sales and North american sales
+
+```{r}
+cor(d3$Global_Sales,d3$NA_Sales,use="complete.obs")
+```
+
+#### 0.955 indicates high correlation
+
+## Linear regression model for relation between NA sales and EU sales
+
+```{r}
+ggplot(data=d3,aes(x=NA_Sales,y=EU_Sales,col=Genre))+geom_point(stat="identity")
+jkr=lm(EU_Sales~NA_Sales,data=d3)
+klk=plot(EU_Sales~NA_Sales,data=d3)
+
+summary(jkr)
+abline(jkr,col="blue")
+
+```
+
+#### hence P- value is less than 0.05 and R-squared is 0.70 meaning NA sales can predict upto 70% of the EU sales
+
+
+
+
+
+## Linear regression model for relation between NA sales and Other sales
+
+```{r}
+ggplot(data=d3,aes(x=NA_Sales,y=Other_Sales,col=Genre))+geom_point(stat="identity")
+jkr4=lm(Other_Sales~NA_Sales,data=d3)
+klk4=plot(Other_Sales~NA_Sales,data=d3)
+
+summary(jkr4)
+abline(jkr4,col="blue")
+
+```
+
+#### Even though P value is less than 0.05 the residuals and R-squared suggests that Other sales are not very correleated to NA sales
+
+
+## Linear regression model for relation between NA sales and JP sales
+
+```{r}
+ggplot(data=d3,aes(x=NA_Sales,y=JP_Sales,col=Genre))+geom_point(stat="identity")
+jkr1=lm(JP_Sales~NA_Sales,data=d3)
+klk1=plot(JP_Sales~NA_Sales,data=d3)
+
+summary(jkr1)
+abline(jkr1,col="blue")
+
+```
+
+#### Even though P value is less than 0.05 the residuals and R-squared suggests that JP sales are not correleated to NA sales
+
+
+## Looking at why Japan is different from the other regions
+
+```{r}
+q1=mean(d3$JP_Sales)
+q2=mean(d3$NA_Sales)
+q3=mean(d3$EU_Sales)
+q4=mean(d3$Other_Sales)
+qq1=d3[which(d3$JP_Sales>q1),]
+qq2=d3[which(d3$NA_Sales>q2),]
+qq3=d3[which(d3$EU_Sales>q3),]
+qq4=d3[which(d3$Other_Sales>q4),]
+
+w1=ggplot(qq1,aes(x=Genre))+geom_bar(fill="purple")+theme(axis.text.x = element_text(angle = 90,size = 7))
+w2=ggplot(qq1,aes(Rating))+geom_bar(fill="light green",col="green")+theme(axis.text.x = element_text(angle = 90,size = 7))
+w3=ggplot(qq1,aes(Platform))+geom_bar(fill="light blue",col="blue")+theme(axis.text.x = element_text(angle = 90,size = 7))
+
+w21=ggplot(qq2,aes(Genre))+geom_bar(fill="purple")+theme(axis.text.x = element_text(angle = 90,size = 7))
+w22=ggplot(qq2,aes(Rating))+geom_bar(fill="light green",col="green")+theme(axis.text.x = element_text(angle = 90,size = 7))
+w23=ggplot(qq2,aes(Platform))+geom_bar(fill="light blue",col="blue")+theme(axis.text.x = element_text(angle = 90,size = 7))
+
+w31=ggplot(qq3,aes(Genre))+geom_bar(fill="purple")+theme(axis.text.x = element_text(angle = 90,size = 7))
+w32=ggplot(qq3,aes(Rating))+geom_bar(fill="light green",col="green")+theme(axis.text.x = element_text(angle = 90,size = 7))
+w33=ggplot(qq3,aes(Platform))+geom_bar(fill="light blue",col="blue")+theme(axis.text.x = element_text(angle = 90,size = 7))
+
+w41=ggplot(qq4,aes(Genre))+geom_bar(fill="purple")+theme(axis.text.x = element_text(angle = 90,size = 7))
+w42=ggplot(qq4,aes(Rating))+geom_bar(fill="light green",col="green")+theme(axis.text.x = element_text(angle = 90,size = 7))
+w43=ggplot(qq4,aes(Platform))+geom_bar(fill="light blue",col="blue")+theme(axis.text.x = element_text(angle = 90,size = 7))
+
+grid.arrange(w1,w2,w3,nrow=1,top="Conditions favoured in Japan")
+
+```
+
+
+```{r}
+grid.arrange(w21,w22,w23,nrow=1,top="Conditions favoured in North America")
+```
+```{r}
+grid.arrange(w31,w32,w33,nrow=1,top="Conditions favoured in Europe")
+```
+```{r}
+grid.arrange(w41,w42,w43,nrow=1,top="Conditions favoured in Other countries")
+```
+
+
+#### This is the reason why Japan is Different Not only in terms of the platform which is PS2, but also in the category of preferred Genre of game Which is roleplaying and also in the the Count vs Global sales graph tells us that japanese market is more concentrated with gamers who are atleast teens
+
+#### Where as North America, Europe and other countries have almost similiar distribution Between genre, rating and platform where Xbox shoots up.
+
+
+## Final Inference
+
+
+#### Hence The inference made is for making a very successful game the best confitions are
+#### -Should be either Action game
+#### -Releasing in NA would be better because EU sale are correleated and both of them combined hold the majority
+#### -should be on the PS2 or the XBOX platform,
+
+#### -But when it comes to japan Roleplay-playing meant for Teens and on the Playstation platform will be successful.
+
+#### -Simulation games although higher rated have low sales because of having lower appeal than shooting and action games
+#### -Critics score lower and sales are affected it 
+#### -Users usually score higher but they do 
+#### -the correlation graph tells us that there is no correlation between User Score and Critic score hence 
